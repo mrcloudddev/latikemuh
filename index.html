@@ -49,7 +49,7 @@
         <div>
           <div class="flex justify-between items-center border-b pb-4 mb-6">
             <span class="text-sm font-bold uppercase text-gray-500 tracking-wider">Soal No: <span id="current-number" class="text-lg text-gray-800">1</span></span>
-            <div class="text-right">
+            <div class="text-right" id="timer-container">
               <span class="text-xs text-gray-500 block">Sisa Waktu</span>
               <span id="timer" class="text-lg font-mono font-bold text-red-600">00:00:00</span>
             </div>
@@ -64,13 +64,13 @@
           <button onclick="nextQuestion()" id="btn-next" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">Selanjutnya</button>
         </div>
       </div>
-      <!-- Sisi Kias/Kanan: Navigasi Nomor Soal -->
+      <!-- Sisi Kanan: Navigasi Nomor Soal -->
       <div class="w-full md:w-64 bg-white p-6 rounded-xl shadow-md h-fit">
-        <h3 class="font-bold text-gray-700 mb-4 border-b pb-2 text-sm">Navigasi Soal</h3>
+        <h3 id="nav-title" class="font-bold text-gray-700 mb-4 border-b pb-2 text-sm">Navigasi Soal</h3>
         <div id="nav-grid" class="grid grid-cols-5 gap-2 mb-6">
           <!-- Kotak nomor akan di-render di sini -->
         </div>
-        <button onclick="triggerSubmit()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-sm">Selesaikan Ujian</button>
+        <button id="btn-submit-exam" onclick="triggerSubmit()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-sm">Selesaikan Ujian</button>
       </div>
     </div>
 
@@ -86,20 +86,23 @@
           <p class="text-3xl font-mono font-black text-blue-600 mt-1"><span id="res-skor">0.00</span></p>
         </div>
       </div>
+      <!-- Tombol Baru untuk Review -->
+      <button onclick="reviewJawaban()" class="w-full mt-2 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition">Lihat Review Jawaban</button>
     </div>
 
   </div>
 
   <!-- CORE LOGIC ENGINE (JAVASCRIPT) -->
   <script>
-    // URL Web App Apps Script Anda
     const API_URL = "https://script.google.com/macros/s/AKfycbwB6Xfut5Y_aiUjPX0kGI9TeEfqouTIcWrsOZosQf4pG64MMz9tBcyMe-A6aMaF1Krj/exec";
     
     let currentUser = null;
     let daftarSoal = [];
     let posisiSiswa = 0;
     let jawabanSiswa = {};
-    let durasiMenit = 90; // Mengatur durasi ujian (60 Menit)
+    let kunciJawaban = {}; // Menyimpan kunci dari server setelah submit
+    let isReviewMode = false; // Status apakah sedang melihat hasil evaluasi
+    let durasiMenit = 90; 
     let hitungMundur;
 
     async function serverRequest(data) {
@@ -165,19 +168,51 @@
       containerOpsi.innerHTML = "";
       
       document.getElementById("btn-prev").disabled = index === 0;
-      document.getElementById("btn-next").innerText = index === daftarSoal.length - 1 ? "Selesai" : "Selanjutnya";
+      
+      if (isReviewMode) {
+        document.getElementById("btn-next").innerText = index === daftarSoal.length - 1 ? "Kembali ke Skor" : "Selanjutnya";
+      } else {
+        document.getElementById("btn-next").innerText = index === daftarSoal.length - 1 ? "Selesai" : "Selanjutnya";
+      }
 
       const opsiHuruf = ['a', 'b', 'c', 'd', 'e'];
       opsiHuruf.forEach(huruf => {
         if(soal.opsi[huruf]) {
           const isChecked = jawabanSiswa[soal.id] === huruf;
+          const isKunci = kunciJawaban[soal.id] === huruf;
+          
           const div = document.createElement("div");
-          div.className = `flex items-center p-3 border rounded-lg cursor-pointer transition ${isChecked ? 'bg-blue-50 border-blue-400 font-medium text-blue-900' : 'hover:bg-gray-50 border-gray-200 text-gray-700'}`;
-          div.onclick = () => pilihJawaban(soal.id, huruf);
+          
+          // Mengatur style warna berdasarkan mode (Ujian Biasa vs Mode Review)
+          if (isReviewMode) {
+            if (isKunci) {
+              // Jika ini jawaban yang benar menurut kunci
+              div.className = "flex items-center p-3 border rounded-lg bg-green-50 border-green-500 font-medium text-green-900";
+            } else if (isChecked && !isKunci) {
+              // Jika siswa memilih ini dan ternyata salah
+              div.className = "flex items-center p-3 border rounded-lg bg-red-50 border-red-400 font-medium text-red-900";
+            } else {
+              // Opsi salah lainnya yang tidak dipilih siswa
+              div.className = "flex items-center p-3 border border-gray-200 rounded-lg text-gray-400 opacity-60";
+            }
+          } else {
+            // Gaya tampilan normal saat ujian berlangsung
+            div.className = `flex items-center p-3 border rounded-lg cursor-pointer transition ${isChecked ? 'bg-blue-50 border-blue-400 font-medium text-blue-900' : 'hover:bg-gray-50 border-gray-200 text-gray-700'}`;
+            div.onclick = () => pilihJawaban(soal.id, huruf);
+          }
+
+          // Tambahkan lencana teks (Benar/Salah) di sebelah kanan opsi jika dalam mode review
+          let badgeReview = "";
+          if (isReviewMode) {
+            if (isKunci) badgeReview = "<span class='ml-auto bg-green-600 text-white text-xs px-2 py-1 rounded font-bold uppercase'>Kunci Benar</span>";
+            else if (isChecked && !isKunci) badgeReview = "<span class='ml-auto bg-red-600 text-white text-xs px-2 py-1 rounded font-bold uppercase'>Pilihan Anda (Salah)</span>";
+          }
+
           div.innerHTML = `
-            <input type="radio" name="soal-${soal.id}" class="h-4 w-4 text-blue-600 pointer-events-none" ${isChecked ? 'checked' : ''}>
+            <input type="radio" name="soal-${soal.id}" class="h-4 w-4 text-blue-600 pointer-events-none" ${isChecked ? 'checked' : ''} ${isReviewMode ? 'disabled' : ''}>
             <span class="ml-3 uppercase font-bold mr-1 text-sm text-gray-400">${huruf.toUpperCase()}.</span>
             <span class="pointer-events-none">${soal.opsi[huruf]}</span>
+            ${badgeReview}
           `;
           containerOpsi.appendChild(div);
         }
@@ -186,6 +221,7 @@
     }
 
     function pilihJawaban(idSoal, pilihan) {
+      if (isReviewMode) return; // Kunci input jika sedang review
       jawabanSiswa[idSoal] = pilihan;
       tampilkanSoal(posisiSiswa);
     }
@@ -194,7 +230,12 @@
       if(posisiSiswa < daftarSoal.length - 1) {
         tampilkanSoal(posisiSiswa + 1);
       } else {
-        triggerSubmit();
+        if (isReviewMode) {
+          // Jika sudah selesai review, kembali ke halaman finish
+          switchSection("exam-room", "exam-finish");
+        } else {
+          triggerSubmit();
+        }
       }
     }
 
@@ -219,15 +260,29 @@
       daftarSoal.forEach((soal, idx) => {
         const btn = document.getElementById(`nav-btn-${idx}`);
         if(!btn) return;
+        
         const sudahDijawab = jawabanSiswa[soal.id];
         const sedangAktif = posisiSiswa === idx;
 
-        if (sedangAktif) {
-          btn.className = "p-2 text-center text-xs font-bold rounded border bg-blue-600 text-white border-blue-600 shadow-sm";
-        } else if (sudahDijawab) {
-          btn.className = "p-2 text-center text-xs font-semibold rounded border bg-green-500 text-white border-green-500";
+        if (isReviewMode) {
+          // Indikator navigasi warna pasca-ujian (Review Mode)
+          const isBenar = jawabanSiswa[soal.id] === kunciJawaban[soal.id];
+          if (sedangAktif) {
+            btn.className = `p-2 text-center text-xs font-bold rounded border ${isBenar ? 'bg-green-700 border-green-700 text-white' : 'bg-red-700 border-red-700 text-white'} ring-2 ring-offset-2 ring-blue-500`;
+          } else if (isBenar) {
+            btn.className = "p-2 text-center text-xs font-semibold rounded border bg-green-500 text-white border-green-500 shadow-sm";
+          } else {
+            btn.className = "p-2 text-center text-xs font-semibold rounded border bg-red-500 text-white border-red-500 shadow-sm";
+          }
         } else {
-          btn.className = "p-2 text-center text-xs font-semibold rounded border bg-white text-gray-600 border-gray-200 hover:bg-gray-50";
+          // Indikator navigasi normal saat sedang ujian
+          if (sedangAktif) {
+            btn.className = "p-2 text-center text-xs font-bold rounded border bg-blue-600 text-white border-blue-600 shadow-sm";
+          } else if (sudahDijawab) {
+            btn.className = "p-2 text-center text-xs font-semibold rounded border bg-green-500 text-white border-green-500";
+          } else {
+            btn.className = "p-2 text-center text-xs font-semibold rounded border bg-white text-gray-600 border-gray-200 hover:bg-gray-50";
+          }
         }
       });
     }
@@ -274,7 +329,20 @@
 
         if(res.status === "success") {
           document.getElementById("res-nama").innerText = currentUser.nama;
-          document.getElementById("res-skor").innerText = res.skor; // Menampilkan skor langsung ke layar siswa
+          document.getElementById("res-skor").innerText = res.skor;
+          
+          // Menyimpan data kunci jawaban yang dikembalikan dari Apps Script Pak Fredi
+          // Catatan: Pastikan di backend (Apps Script) return JSON menyertakan objek data 'kunci'
+          // Format objek yang diharapkan backend: kunci: { "soal_id_1": "a", "soal_id_2": "c" }
+          if(res.kunci) {
+            kunciJawaban = res.kunci;
+          } else {
+            // Fallback cadangan jika data kunci disisipkan di dalam array daftarSoal
+            daftarSoal.forEach(s => {
+              if(s.kunci) kunciJawaban[s.id] = s.kunci.toLowerCase();
+            });
+          }
+
           switchSection("login-card", "exam-finish");
         }
       } catch (e) {
@@ -284,6 +352,23 @@
         document.getElementById("btn-login").innerText = "Masuk Ujian";
         document.getElementById("btn-login").disabled = false;
       }
+    }
+
+    function reviewJawaban() {
+      isReviewMode = true;
+      
+      // Mengubah UI agar cocok dengan mode review hasil/pembahasan
+      document.getElementById("timer-container").innerHTML = "<span class='bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider'>Mode Review</span>";
+      document.getElementById("nav-title").innerText = "Hasil Evaluasi Soal";
+      document.getElementById("btn-submit-exam").innerText = "Kembali Ke Skor";
+      document.getElementById("btn-submit-exam").className = "w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-sm";
+      document.getElementById("btn-submit-exam").onclick = function() {
+        switchSection("exam-room", "exam-finish");
+      };
+
+      // Tampilkan kembali ruang ujian dengan status review aktif
+      switchSection("exam-finish", "exam-room");
+      tampilkanSoal(0);
     }
 
     function switchSection(hideId, showId) {
