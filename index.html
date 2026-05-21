@@ -3,28 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Pengaduan Kilat</title>
+    <title>Form Pengaduan Ringkas</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center py-10 px-4">
 
     <div class="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
         
-        <!-- Header -->
         <div class="text-center mb-6">
             <h2 class="text-xl font-bold text-slate-800 tracking-tight">Formulir Laporan Ringkas</h2>
-            <p class="text-xs text-slate-500 mt-1">Sampaikan poin aduan Anda secara cepat di bawah ini.</p>
+            <p class="text-xs text-slate-500 mt-1">Sampaikan aduan Anda secara jelas melalui formulir di bawah ini.</p>
         </div>
 
-        <form id="superMinimalisForm" class="space-y-4">
+        <form id="formDenganKetikan" class="space-y-4">
             
-            <!-- Nama Pelapor -->
             <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Nama Pelapor / Perwakilan</label>
                 <input type="text" id="nama_pelapor" placeholder="Tulis nama Anda atau perwakilan kelompok" required class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
 
-            <!-- Kategori Masalah -->
             <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Kategori Masalah Utama</label>
                 <select id="masalah_utama" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
@@ -35,9 +32,13 @@
                 </select>
             </div>
 
-            <!-- Tuntutan -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Tuntutan Utama Anda</label>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Penjelasan / Detail Laporan</label>
+                <textarea id="penjelasan" rows="5" placeholder="Ketik kronologi, kejadian, atau informasi tambahan secara lengkap di sini..." required class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">4. Tuntutan Utama Anda</label>
                 <select id="tuntutan" class="w-full rounded-lg border border-slate-300 p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
                     <option value="Mohon Audit Khusus Inspektorat">Mohon Inspektorat melakukan Audit Khusus / Sidak</option>
                     <option value="Mohon Evaluasi / Copot Jabatan">Mohon evaluasi berat / pemberhentian dari jabatan</option>
@@ -45,7 +46,6 @@
                 </select>
             </div>
 
-            <!-- Tombol Kirim -->
             <div class="pt-2">
                 <button type="submit" id="btnSubmit" class="w-full flex justify-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-colors">
                     Kirim Laporan
@@ -56,7 +56,7 @@
     </div>
 
     <script>
-        document.getElementById('superMinimalisForm').addEventListener('submit', function(e) {
+        document.getElementById('formDenganKetikan').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const btnSubmit = document.getElementById('btnSubmit');
@@ -66,11 +66,12 @@
             const payload = {
                 nama_pelapor: document.getElementById('nama_pelapor').value,
                 masalah_utama: document.getElementById('masalah_utama').value,
+                penjelasan: document.getElementById('penjelasan').value,
                 tuntutan: document.getElementById('tuntutan').value
             };
 
             // MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI
-            const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwZMtUy2hol58-oJA_ivYtgDclEmaxv2QevF0f4eeqAcQ0wm66yUOmLlBXsgrkr6RJD/exec';
+            const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwipOHnAeM2UsRcIWVE-St7Des8edGj4ztTRoyiWdSSvs5Fq0-RRB_TmH_uL7t8PilP/exec';
 
             fetch(WEB_APP_URL, {
                 method: 'POST',
@@ -82,7 +83,7 @@
             })
             .then(() => {
                 alert('Laporan berhasil dikirim!');
-                document.getElementById('superMinimalisForm').reset();
+                document.getElementById('formDenganKetikan').reset();
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = 'Kirim Laporan';
             })
